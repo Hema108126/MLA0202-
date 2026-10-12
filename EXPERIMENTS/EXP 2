@@ -1,0 +1,164 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "authorship_tag": "ABX9TyMsLCgQ1dbN1lzOGqANLK8h",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/Hema108126/MLA0202-/blob/main/EXPERIMENTS/EXP%202\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 1,
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "8vItdhsw9AhA",
+        "outputId": "ddcb6c26-d1aa-489a-c2ed-601a80e7beb3"
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Training Data:\n",
+            "     Sky AirTemp Humidity    Wind Water Forecast EnjoySport\n",
+            "0  Sunny    Warm   Normal  Strong  Warm     Same        Yes\n",
+            "1  Sunny    Warm     High  Strong  Warm     Same        Yes\n",
+            "2  Rainy    Cold     High  Strong  Warm   Change         No\n",
+            "3  Sunny    Warm     High  Strong  Cool     Same        Yes\n",
+            "\n",
+            "Example: ['Sunny', 'Warm', 'Normal', 'Strong', 'Warm', 'Same'] => Yes\n",
+            "S = ['Sunny', 'Warm', 'Normal', 'Strong', 'Warm', 'Same']\n",
+            "G = [['?', '?', '?', '?', '?', '?']]\n",
+            "\n",
+            "Example: ['Sunny', 'Warm', 'High', 'Strong', 'Warm', 'Same'] => Yes\n",
+            "S = ['Sunny', 'Warm', '?', 'Strong', 'Warm', 'Same']\n",
+            "G = [['?', '?', '?', '?', '?', '?']]\n",
+            "\n",
+            "Example: ['Rainy', 'Cold', 'High', 'Strong', 'Warm', 'Change'] => No\n",
+            "S = ['Sunny', 'Warm', '?', 'Strong', 'Warm', 'Same']\n",
+            "G = [['Sunny', '?', '?', '?', '?', '?'], ['?', 'Warm', '?', '?', '?', '?'], ['?', '?', '?', '?', '?', 'Same']]\n",
+            "\n",
+            "Example: ['Sunny', 'Warm', 'High', 'Strong', 'Cool', 'Same'] => Yes\n",
+            "S = ['Sunny', 'Warm', '?', 'Strong', '?', 'Same']\n",
+            "G = [['Sunny', '?', '?', '?', '?', '?'], ['?', 'Warm', '?', '?', '?', '?'], ['?', '?', '?', '?', '?', 'Same']]\n",
+            "\n",
+            "Final Specific Boundary (S):\n",
+            "['Sunny', 'Warm', '?', 'Strong', '?', 'Same']\n",
+            "\n",
+            "Final General Boundary (G):\n",
+            "['Sunny', '?', '?', '?', '?', '?']\n",
+            "['?', 'Warm', '?', '?', '?', '?']\n",
+            "['?', '?', '?', '?', '?', 'Same']\n"
+          ]
+        }
+      ],
+      "source": [
+        "\n",
+        "import pandas as pd\n",
+        "import io\n",
+        "\n",
+        "# Sample CSV data\n",
+        "csv_data = \"\"\"Sky,AirTemp,Humidity,Wind,Water,Forecast,EnjoySport\n",
+        "Sunny,Warm,Normal,Strong,Warm,Same,Yes\n",
+        "Sunny,Warm,High,Strong,Warm,Same,Yes\n",
+        "Rainy,Cold,High,Strong,Warm,Change,No\n",
+        "Sunny,Warm,High,Strong,Cool,Same,Yes\n",
+        "\"\"\"\n",
+        "\n",
+        "# Read CSV file\n",
+        "df = pd.read_csv(io.StringIO(csv_data))\n",
+        "print(\"Training Data:\")\n",
+        "print(df)\n",
+        "\n",
+        "# Separate attributes and target\n",
+        "X = df.iloc[:, :-1].values.tolist()\n",
+        "y = df.iloc[:, -1].values.tolist()\n",
+        "\n",
+        "n = len(X[0])\n",
+        "S = ['0'] * n\n",
+        "G = [['?'] * n]\n",
+        "\n",
+        "def covers(h, x):\n",
+        "    return all(a == '?' or a == v for a, v in zip(h, x))\n",
+        "\n",
+        "def minimal_generalizations(s, x):\n",
+        "    new_s = s.copy()\n",
+        "    for i in range(n):\n",
+        "        if new_s[i] == '0':\n",
+        "            new_s[i] = x[i]\n",
+        "        elif new_s[i] != x[i]:\n",
+        "            new_s[i] = '?'\n",
+        "    return new_s\n",
+        "\n",
+        "def minimal_specializations(g, x, domains, s):\n",
+        "    results = []\n",
+        "    for i in range(n):\n",
+        "        if g[i] == '?':\n",
+        "            for value in domains[i]:\n",
+        "                if value != x[i]:\n",
+        "                    new_g = g.copy()\n",
+        "                    new_g[i] = value\n",
+        "                    if all(a == '?' or b == '0' or a == b\n",
+        "                           for a, b in zip(new_g, s)):\n",
+        "                        results.append(new_g)\n",
+        "    return results\n",
+        "\n",
+        "domains = [df[col].unique().tolist()\n",
+        "           for col in df.columns[:-1]]\n",
+        "\n",
+        "for x, label in zip(X, y):\n",
+        "    if label.lower() == 'yes':\n",
+        "        G = [g for g in G if covers(g, x)]\n",
+        "\n",
+        "        if S == ['0'] * n:\n",
+        "            S = x.copy()\n",
+        "        else:\n",
+        "            S = minimal_generalizations(S, x)\n",
+        "\n",
+        "    else:\n",
+        "        new_G = []\n",
+        "        for g in G:\n",
+        "            if covers(g, x):\n",
+        "                new_G.extend(\n",
+        "                    minimal_specializations(g, x, domains, S)\n",
+        "                )\n",
+        "            else:\n",
+        "                new_G.append(g)\n",
+        "        G = new_G\n",
+        "\n",
+        "    print(\"\\nExample:\", x, \"=>\", label)\n",
+        "    print(\"S =\", S)\n",
+        "    print(\"G =\", G)\n",
+        "\n",
+        "print(\"\\nFinal Specific Boundary (S):\")\n",
+        "print(S)\n",
+        "\n",
+        "print(\"\\nFinal General Boundary (G):\")\n",
+        "for h in G:\n",
+        "    print(h)\n"
+      ]
+    }
+  ]
+}
