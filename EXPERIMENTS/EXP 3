@@ -1,0 +1,170 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "authorship_tag": "ABX9TyOsvk1onSaj7u3YniwiYjx9",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/Hema108126/MLA0202-/blob/main/EXPERIMENTS/EXP%203\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 1,
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "Yno2W8Gl-48C",
+        "outputId": "37662c6c-20fe-44a5-f3ef-c4bd055b6482"
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Dataset:\n",
+            "     Outlook Temperature Humidity    Wind PlayTennis\n",
+            "0      Sunny         Hot     High    Weak         No\n",
+            "1      Sunny         Hot     High  Strong         No\n",
+            "2   Overcast         Hot     High    Weak        Yes\n",
+            "3       Rain        Mild     High    Weak        Yes\n",
+            "4       Rain        Cool   Normal    Weak        Yes\n",
+            "5       Rain        Cool   Normal  Strong         No\n",
+            "6   Overcast        Cool   Normal  Strong        Yes\n",
+            "7      Sunny        Mild     High    Weak         No\n",
+            "8      Sunny        Cool   Normal    Weak        Yes\n",
+            "9       Rain        Mild   Normal    Weak        Yes\n",
+            "10     Sunny        Mild   Normal  Strong        Yes\n",
+            "11  Overcast        Mild     High  Strong        Yes\n",
+            "12  Overcast         Hot   Normal    Weak        Yes\n",
+            "13      Rain        Mild     High  Strong         No\n",
+            "\n",
+            "Decision Tree:\n",
+            "{'Outlook': {'Sunny': {'Humidity': {'High': 'No', 'Normal': 'Yes'}}, 'Overcast': 'Yes', 'Rain': {'Wind': {'Weak': 'Yes', 'Strong': 'No'}}}}\n",
+            "\n",
+            "New Sample: {'Outlook': 'Sunny', 'Temperature': 'Cool', 'Humidity': 'High', 'Wind': 'Strong'}\n",
+            "Prediction: No\n"
+          ]
+        }
+      ],
+      "source": [
+        "\n",
+        "import pandas as pd\n",
+        "import math\n",
+        "from collections import Counter\n",
+        "\n",
+        "# Play Tennis dataset\n",
+        "data = {\n",
+        "    'Outlook': ['Sunny','Sunny','Overcast','Rain','Rain','Rain',\n",
+        "                'Overcast','Sunny','Sunny','Rain','Sunny','Overcast',\n",
+        "                'Overcast','Rain'],\n",
+        "    'Temperature': ['Hot','Hot','Hot','Mild','Cool','Cool','Cool',\n",
+        "                    'Mild','Cool','Mild','Mild','Mild','Hot','Mild'],\n",
+        "    'Humidity': ['High','High','High','High','Normal','Normal','Normal',\n",
+        "                 'High','Normal','Normal','Normal','High','Normal','High'],\n",
+        "    'Wind': ['Weak','Strong','Weak','Weak','Weak','Strong','Strong',\n",
+        "             'Weak','Weak','Weak','Strong','Strong','Weak','Strong'],\n",
+        "    'PlayTennis': ['No','No','Yes','Yes','Yes','No','Yes',\n",
+        "                   'No','Yes','Yes','Yes','Yes','Yes','No']\n",
+        "}\n",
+        "\n",
+        "df = pd.DataFrame(data)\n",
+        "print(\"Dataset:\")\n",
+        "print(df)\n",
+        "\n",
+        "# Calculate entropy\n",
+        "def entropy(labels):\n",
+        "    counts = Counter(labels)\n",
+        "    total = len(labels)\n",
+        "    return -sum((count/total) * math.log2(count/total)\n",
+        "                for count in counts.values())\n",
+        "\n",
+        "# Calculate information gain\n",
+        "def information_gain(df, attribute, target):\n",
+        "    total_entropy = entropy(df[target])\n",
+        "    weighted_entropy = 0\n",
+        "\n",
+        "    for value in df[attribute].unique():\n",
+        "        subset = df[df[attribute] == value]\n",
+        "        weighted_entropy += (len(subset)/len(df)) * entropy(subset[target])\n",
+        "\n",
+        "    return total_entropy - weighted_entropy\n",
+        "\n",
+        "# Build ID3 decision tree\n",
+        "def id3(df, target, attributes):\n",
+        "    if len(df[target].unique()) == 1:\n",
+        "        return df[target].iloc[0]\n",
+        "\n",
+        "    if not attributes:\n",
+        "        return df[target].mode()[0]\n",
+        "\n",
+        "    gains = {attr: information_gain(df, attr, target)\n",
+        "             for attr in attributes}\n",
+        "    best = max(gains, key=gains.get)\n",
+        "\n",
+        "    tree = {best: {}}\n",
+        "\n",
+        "    for value in df[best].unique():\n",
+        "        subset = df[df[best] == value]\n",
+        "\n",
+        "        if subset.empty:\n",
+        "            tree[best][value] = df[target].mode()[0]\n",
+        "        else:\n",
+        "            remaining = [a for a in attributes if a != best]\n",
+        "            tree[best][value] = id3(subset, target, remaining)\n",
+        "\n",
+        "    return tree\n",
+        "\n",
+        "# Classify a new sample\n",
+        "def predict(tree, sample):\n",
+        "    if not isinstance(tree, dict):\n",
+        "        return tree\n",
+        "\n",
+        "    attribute = next(iter(tree))\n",
+        "    value = sample.get(attribute)\n",
+        "\n",
+        "    if value not in tree[attribute]:\n",
+        "        return \"Unknown\"\n",
+        "\n",
+        "    return predict(tree[attribute][value], sample)\n",
+        "\n",
+        "# Build the tree\n",
+        "attributes = list(df.columns[:-1])\n",
+        "tree = id3(df, 'PlayTennis', attributes)\n",
+        "\n",
+        "print(\"\\nDecision Tree:\")\n",
+        "print(tree)\n",
+        "\n",
+        "# New sample\n",
+        "sample = {\n",
+        "    'Outlook': 'Sunny',\n",
+        "    'Temperature': 'Cool',\n",
+        "    'Humidity': 'High',\n",
+        "    'Wind': 'Strong'\n",
+        "}\n",
+        "\n",
+        "print(\"\\nNew Sample:\", sample)\n",
+        "print(\"Prediction:\", predict(tree, sample))\n"
+      ]
+    }
+  ]
+}
